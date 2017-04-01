@@ -1,0 +1,3 @@
+# Normalized Get
+
+A get function that traverses normalizr relationships. More to come...
