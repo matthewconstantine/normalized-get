@@ -1,46 +1,58 @@
-const _flatPathGet = (object, path = []) => {
-  let result = object[path.shift()];
-  if (path.length === 0) { return result; }
-  for (let property of path) {
-    result = result[property];
-  }
-  return result;
-}
+import lodashGet from 'lodash/get';
+import memoize from 'lodash/memoize';
+import stringToPath from 'lodash/_stringtopath';
 
-const _nget = (schemas, entities, path) => {
+const nget = (schemas, entities, path) => {
   const [modelName, id, propertyName, ...remainingPath] = path;
   const modelData = entities[modelName] && entities[modelName][id];
+  if (!propertyName) { return modelData; } // No more properties to find. We're done.
+
   if (typeof modelData === 'undefined') { return undefined; }  // cache miss. Ignore.
-  if (!propertyName) { return modelData } // No more properties to find. We're done.
 
   const schema = schemas[modelName];
+  if (typeof schema === 'undefined') { 
+    throw new Error(`Could not find schema '${modelName}' for path [${path.join(', ')}]. Availalbe schemas: [${Object.keys(schemas)}]`); 
+  }
+
   const propertyData = modelData[propertyName];  // may be an array or value
-  if (typeof schema === 'undefined') { throw new Error(`Expected to find a schema for '${modelName}' for path '${path}'`); }
-  if (typeof propertyData === 'undefined') { throw new Error(`Could not find '${propertyName}' on '${modelName}' for '${path}'`); }
+  if (typeof propertyData === 'undefined') {
+    throw new Error(`Could not find property '${propertyName}' on '${modelName}' for path [${path.join(', ')}]. Available properties: [${Object.keys(modelData)}]`);
+  }
+
   const propertySchema = schema.schema[propertyName];
 
-  if (!propertySchema) {  // it's a normal property (non-relational)
-    return !propertySchema && _flatPathGet(modelData, [propertyName, ...remainingPath]);
-  
-  } else if (Array.isArray(propertySchema)) { // it's a hasMany
-    const relatedModelsName = propertySchema[0].key;
-    return propertyData.map((relatedId) => {
-      return _nget(schemas, entities, [relatedModelsName, relatedId, ...remainingPath]);
-    });
-  
-  } else { // it's a hasOne
-    const relatedModelName = propertySchema.key;
-    return _nget(schemas, entities, [relatedModelName, propertyData, ...remainingPath]);
+  // it's a normal non-relational property, defer to lodashGet
+  if (!propertySchema) {  
+    return !propertySchema && lodashGet(modelData, [propertyName, ...remainingPath]);
   }
-}
 
-export const _parsedNGet = (schemas, entities, ...segments) => {
-  const path = segments.reduce((acc, s) => { 
-    s = s.split ? s.split('.') : [s]; 
-    acc.push(...s); 
-    return acc;
-  }, []);
-  return _nget(schemas, entities, path);
-}
+  // it's a hasMany relationship
+  if (Array.isArray(propertySchema)) {
+    const relatedModelsName = propertySchema[0].key;
+    if (remainingPath.length) {
+      const [pathHead, ...pathTail] = remainingPath;
+      const relatedModelsIdByIndex = propertyData[pathHead];
+      return nget(schemas, entities, [relatedModelsName, relatedModelsIdByIndex, ...pathTail]);
+    }
+    // return all the related records
+    return propertyData.map((relatedId) => {
+      return nget(schemas, entities, [relatedModelsName, relatedId]);
+    });
+  }
 
-export const bindNGet = (schemas, entities) => _parsedNGet.bind(null, schemas, entities);
+  // it's a belongsTo relationship
+  const relatedModelName = propertySchema.key;
+  return nget(schemas, entities, [relatedModelName, propertyData, ...remainingPath]);
+};
+
+export const parsedNGet = (schemas, entities, pathString) => {
+  const path = stringToPath(pathString);
+  const rootModelName = path[0];
+  if (typeof entities[rootModelName] === 'undefined') {
+    const knownSchemas = Object.keys(schemas);
+    throw new Error(`Could not find property '${rootModelName}' for path '${pathString}'. Known keys: [${knownSchemas.join(',')}].`); 
+  }
+  return nget(schemas, entities, path);
+};
+
+export const bindNormalizedGet = (schemas) => parsedNGet.bind(null, schemas);

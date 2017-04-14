@@ -4,7 +4,8 @@
   "description": "Easily follow relationships in normalizr data",
   "main": "./dist/index.js",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1",
+    "test": "node_modules/.bin/mocha --compilers js:babel-core/register ./test/**/*",
+    "watch": "node_modules/.bin/mocha --watch --compilers js:babel-core/register ./test/**/*",
     "build": "babel src --presets babel-preset-es2015 --out-dir dist",
     "prepublish": "npm run build"
   },
@@ -13,6 +14,24 @@
   "devDependencies": {
     "babel": "^6.23.0",
     "babel-cli": "^6.24.0",
-    "babel-preset-es2015": "^6.24.0"
+    "babel-preset-es2015": "^6.24.0",
+    "chai": "^3.5.0",
+    "eslint": "^3.19.0",
+    "eslint-config-airbnb-base": "^11.1.3",
+    "eslint-plugin-import": "^2.2.0",
+    "mocha": "^3.2.0",
+    "normalizr": "^3.2.2"
+  },
+  "quokka": {
+    "babel": {
+      "presets": [
+        "es2015"
+      ]
+    }
+  },
+  "dependencies": {
+    "lodash._stringtopath": "^4.8.0",
+    "lodash.get": "^4.4.2",
+    "lodash.memoize": "^4.1.2"
   }
 }
