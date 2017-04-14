@@ -1,6 +1,6 @@
 {
   "name": "normalized-get",
-  "version": "0.0.4",
+  "version": "0.0.5",
   "description": "Easily follow relationships in normalizr data",
   "main": "./dist/index.js",
   "scripts": {
@@ -20,13 +20,12 @@
     "eslint-config-airbnb-base": "^11.1.3",
     "eslint-plugin-import": "^2.2.0",
     "mocha": "^3.2.0",
-    "normalizr": "^3.2.2",
+    "normalizr": "^3.2.2"
+  },
+  "dependencies": {
     "lodash._stringtopath": "^4.8.0",
     "lodash.get": "^4.4.2",
     "lodash.memoize": "^4.1.2"
-  },
-  "dependencies": {
-    
   },
   "quokka": {
     "babel": {
