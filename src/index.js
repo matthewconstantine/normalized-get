@@ -1,6 +1,6 @@
-import lodashGet from 'lodash/get';
-import memoize from 'lodash/memoize';
-import stringToPath from 'lodash/_stringtopath';
+import lodashGet from 'lodash.get';
+import memoize from 'lodash.memoize';
+import stringToPath from 'lodash._stringtopath';
 
 const nget = (schemas, entities, path) => {
   const [modelName, id, propertyName, ...remainingPath] = path;
