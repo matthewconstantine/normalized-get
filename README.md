@@ -27,7 +27,7 @@ const author = data.users[authorId];
 
 The more relationships your data has have the more complex this gets. And you have to remember which property maps to which model. In this case, `articles[123].author` maps to `users`.
 
-With normalized get you can access a realtionship like:
+With normalized get you can access a relationship like:
 
 ```js
 const nget = bindNormalizedGet(schemas);
