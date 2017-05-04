@@ -70,23 +70,18 @@ describe('Normalized Get', () => {
   });
 
   it('should throw an error for missing properties', () => {
-    const fn = () => {
-      nget('articles[123].nonExistantRelation');
-    };
+    const fn = () => nget('articles[123].nopeNotReal');
     expect(fn).to.throw(
-      "Could not find property 'nonExistantRelation' on 'articles' for path [articles.123.nonExistantRelation]. Available properties: [author,body,comments,id,title]"
+      "Could not find property 'nopeNotReal' on 'articles' for path [articles.123.nopeNotReal]. Available properties: [author,body,comments,id,title]"
     );
   });
 
   it('should throw an error for missing schemas', () => {
-    const fn = () => {
-      console.log('here')
-      nget('thisIsNotReal[123]');
-    };
+    const fn = () => nget('thisIsNotReal[123]');
     expect(fn).to.throw(
       "Could not find schema 'thisIsNotReal' for path 'thisIsNotReal[123]'. Known schemas: [comments,articles,users]."
-    );    
-  })
+    );
+  });
 });
 
 describe('Graph Get', () => {
@@ -96,7 +91,9 @@ describe('Graph Get', () => {
     const actual = graphGet('articles[123].author');
     const article = data.articles[123];
     const author = data.users[article.author];
-    const expected = { ...article, ...{ author } };
+    const expected = {
+      articles: { 123: { ...article, ...{ author } } }
+    };
     expect(actual).to.deep.equal(expected);
   });
 
@@ -109,7 +106,23 @@ describe('Graph Get', () => {
     const article = data.articles[123];
     const author = data.users[article.author];
     const comments = Object.keys(data.comments).map(key => data.comments[key]);
-    const expected = { ...article, ...{ author }, ...{ comments } };
+    const expected = {
+      articles: { 123: { ...article, ...{ author }, ...{ comments } } }
+    };
+    
+    expect(actual).to.deep.equal(expected);
+  });
+
+  it('should hashmap multiple root models', () => {
+    const actual = graphGet(
+      'comments[comment-123-4738]',
+      'comments[comment-123-9999]'
+    );
+    const commentA = data.comments['comment-123-4738'];
+    const commentB = data.comments['comment-123-9999'];
+    const expected = {
+      comments: { 'comment-123-4738': commentA, 'comment-123-9999': commentB }
+    };
     expect(actual).to.deep.equal(expected);
   });
 });

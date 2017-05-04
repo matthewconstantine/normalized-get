@@ -84,14 +84,15 @@ const nget = (shouldMerge, schemas, entities, path) => {
  */
 const parsedNGet = (shouldMerge, schemas, entities, pathString) => {
   const path = stringToPath(pathString);
-  const rootModelName = path[0];
+  const [rootModelName, rootModelId] = path;
   if (typeof entities[rootModelName] === 'undefined') {
     const knownSchemas = Object.keys(schemas);
     throw new Error(
       `Could not find schema '${rootModelName}' for path '${pathString}'. Known schemas: [${knownSchemas.join(',')}].`
     );
   }
-  return nget(shouldMerge, schemas, entities, path);
+  const results = nget(shouldMerge, schemas, entities, path);
+  return shouldMerge ? { [rootModelName]: { [rootModelId]: results } } : results;
 };
 
 /**
@@ -100,12 +101,16 @@ const parsedNGet = (shouldMerge, schemas, entities, pathString) => {
  * the order in which those were fetched. It's based on the assumption that
  * a string is a key and an object is a previously denormalized data that should
  * be preserved.
- * 
+ *
  * @private
  */
 const preferObjectsCustomizer = (a, b) => {
-  const shouldPreserveObject =
-    typeof [].concat(a)[0] === 'object' && typeof [].concat(b)[0] === 'string';
+  const typeA = typeof [].concat(a)[0];
+  const typeB = typeof [].concat(b)[0];
+  if (typeA === 'object' && typeB === 'object') {
+    return lodashMergeWith(a, b, preferObjectsCustomizer);
+  }
+  const shouldPreserveObject = typeA === 'object' && typeB === 'string';
   return shouldPreserveObject ? a : b;
 };
 
@@ -133,8 +138,8 @@ export const parsedNGetMulti = (
  * entities. The bound function accepts a single path string and returns the
  * leaf ndoe of the graph. It will follow Array types.
  *
- * @param {Object} schemas 
- * @param {Object} entities 
+ * @param {Object} schemas
+ * @param {Object} entities
  */
 export const bindNormalizedGet = (schemas, entities) =>
   parsedNGet.bind(null, false, schemas, entities);
@@ -144,19 +149,8 @@ export const bindNormalizedGet = (schemas, entities) =>
  * entities. The bound function accepts multiple path strings and returns
  * the combined result of all of them.
  *
- * @param {*} schemas 
- * @param {*} entities 
+ * @param {*} schemas
+ * @param {*} entities
  */
 export const bindGraphGet = (schemas, entities) =>
   parsedNGetMulti.bind(null, true, schemas, entities);
-
-// for quokka
-import { schema } from 'normalizr';
-import { articlesCommentsUsers as data } from '../test/fixtures';
-const makeSchemas = () => {
-  const users = new schema.Entity('users');
-  const comments = new schema.Entity('comments', { user: users });
-  const articles = new schema.Entity('articles', { author: users, comments: [comments] });
-  return { comments, articles, users };
-};
-const graphGet = bindGraphGet(makeSchemas(), data);
