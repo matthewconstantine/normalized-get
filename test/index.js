@@ -1,6 +1,6 @@
 import chai from 'chai';
 import { schema } from 'normalizr';
-import { bindNormalizedGet, bindMergedGet } from '../src/index';
+import { bindNormalizedGet, bindGraphGet } from '../src/index';
 import { articlesCommentsUsers as data } from './fixtures';
 
 const { expect } = chai;
@@ -25,7 +25,7 @@ describe('Normalized Get', () => {
     expect(actual.id).to.equal('123');
   });
 
-  it('should return undefined for entities not in data', () => {
+  it('should return an empty object for entities not in data', () => {
     const actual = nget(data, 'articles[9999999]');
     expect(actual).to.be.undefined;
   });
@@ -64,12 +64,12 @@ describe('Normalized Get', () => {
       nget(data, 'articles[123].nonExistantRelation');
     };
     expect(fn).to.throw(
-      "Could not find property 'nonExistantRelation' on 'articles' for path [articles, 123, nonExistantRelation]. Available properties: [author,body,comments,id,title]"
+      "Could not find property 'nonExistantRelation' on 'articles' for path [articles.123.nonExistantRelation]. Available properties: [author,body,comments,id,title]"
     );
   });
 });
 
-describe('Normalized Get when follow option is true', () => {
+describe('Normalized Get when shouldFollow option is true', () => {
   const ngetFollow = bindNormalizedGet(makeSchemas(), { shouldFollow: true });
 
   it('should map over array results and apply the remaining path', () => {
@@ -88,27 +88,27 @@ describe('Normalized Get when follow option is true', () => {
   });
 });
 
-describe.only('Merged Normalized Get', () => {
-  const mergedGet = bindMergedGet(makeSchemas());
+describe('Graph Get', () => {
+  const ngetMerged = bindGraphGet(makeSchemas(), data);
 
-  it('should merge two sibling paths', () => {
-    const actual = mergedGet(
-      data,
-      'articles.123'.split('.'),
-      'articles.123.comments'.split('.'),
-      'articles.123.author'.split('.')
+  it('should return a deeply nested object', () => {
+    const actual = ngetMerged('articles[123].author');
+    const article = data.articles[123];
+    const author = data.users[article.author];
+    const expected = { ...article, ...{ author } };
+    expect(actual).to.deep.equal(expected);
+  });
+
+  it('should merge multiple paths', () => {
+    const actual = ngetMerged(
+      'articles[123].author',
+      'articles[123].comments',
+      'articles[123]'
     );
     const article = data.articles[123];
+    const author = data.users[article.author];
     const comments = Object.keys(data.comments).map(key => data.comments[key]);
-    const author = data.users[data.articles[123].author];
-
-    const expected = {
-      ...article,
-      ...{ comments },
-      ...{ author }
-    };
-    console.log('expected', expected);
-
-    expect(actual).to.equal(expected);
+    const expected = { ...article, ...{ author }, ...{ comments } };
+    expect(actual).to.deep.equal(expected);
   });
 });

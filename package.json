@@ -27,7 +27,7 @@
     "lodash._stringtopath": "^4.8.0",
     "lodash.get": "^4.4.2",
     "lodash.memoize": "^4.1.2",
-    "lodash.merge": "^4.6.0"
+    "lodash.mergewith": "^4.6.0"
   },
   "quokka": {
     "babel": {
