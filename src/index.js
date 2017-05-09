@@ -120,12 +120,7 @@ const preferObjectsCustomizer = (a, b) => {
  *
  * @private
  */
-export const parsedNGetMulti = (
-  shouldMerge,
-  schemas,
-  entities,
-  ...pathStrings
-) => {
+const parsedNGetMulti = (shouldMerge, schemas, entities, ...pathStrings) => {
   const results = pathStrings.map(pathString =>
     parsedNGet(true, schemas, entities, pathString)
   );
