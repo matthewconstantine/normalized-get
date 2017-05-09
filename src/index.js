@@ -22,7 +22,7 @@ function throwMissingPropertyError(modelData, modelName, propertyName, path) {
  * the structure leading up to that, suitable for deep merging with other calls.
  *
  * @param {*} shouldMerge Provide parent data shape or just the leaf nodes. Future config object goes here, if needed.
- * @param {*} schemas redux-query schemas or equivelent
+ * @param {*} schemas normalizr schemas or equivalent
  * @param {*} entities normalizr entities
  * @param {Array} path Path parts split into an Array
  * @private
@@ -134,7 +134,7 @@ export const parsedNGetMulti = (
 };
 
 /**
- * Produces a getter that is prebound to redux-query schemas and normalizr
+ * Produces a getter that is prebound to normalizr schemas and normalizr
  * entities. The bound function accepts a single path string and returns the
  * leaf ndoe of the graph. It will follow Array types.
  *
@@ -145,7 +145,7 @@ export const bindNormalizedGet = (schemas, entities) =>
   parsedNGet.bind(null, false, schemas, entities);
 
 /**
- * Produces a getter that is prebound to redux-query schemas and normalizr
+ * Produces a getter that is prebound to normalizr schemas and normalizr
  * entities. The bound function accepts multiple path strings and returns
  * the combined result of all of them.
  *
