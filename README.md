@@ -9,7 +9,7 @@ Anyone that uses [normalizr](https://github.com/paularmstrong/normalizr), or nor
 ## What does it do?
 
 1. `NormalizedGet` lets you access normalized data using a path as though it was denormalized. 
-2. `GraphGet` lets you denormalize mutliple paths at once, perfect for using in components.
+2. `GraphGet` lets you denormalize multiple paths at once, perfect for using in components.
 
 ### NormalizedGet
 
@@ -28,19 +28,19 @@ Say you have a schema like this:
 
 Just setup `bindNoramlizedGet` like so:
 ```js
-const normlizedGet = bindNormalizedGet(schemas, data); 
+const normalizedGet = bindNormalizedGet(schemas, data); 
 ```
 
 Now you can access deep relationships with a single line of code:
 
 ```js
 // With normalizedGet
-const commenters = normlizedGet('articles[123].comments.user');
+const commenters = normalizedGet('articles[123].comments.user');
 ```
 
 It even follows Array entities. So the above example will map over the comments and return the authors.
 
-For comparision, here's how you'd do it without `normlizedGet`:
+For comparison, here's how you'd do it without `normalizedGet`:
 ```js
 // Without normlaizedGet:
 const commenters = Object.keys(data.comments)
@@ -54,7 +54,7 @@ The more relationships your data has have the more complex this manual fetching 
 
 ### graphGet
 
-`normlizedGet` is nice for getting a specific peice of data from your entity graph. What if you need more data? That's where `graphGet` comes in handy. It returns a deep structure containing the data you specify.
+`normalizedGet` is nice for getting a specific piece of data from your entity graph. What if you need more data? That's where `graphGet` comes in handy. It returns a deep structure containing the data you specify.
 
 First we bind `graphGet` using the similar config method as before:
 ```js
@@ -98,4 +98,4 @@ export const normalizedGet = bindNormalizedGet(schemas, data);
 export const graphGet = bindGraphGet(schemas, data);
 ```
 
-Now you have `normlizedGet` and `graphGet` functions ready for easy data denormalization.
+Now you have `normalizedGet` and `graphGet` functions ready for easy data denormalization.
