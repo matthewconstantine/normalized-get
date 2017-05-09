@@ -1,6 +1,6 @@
 {
   "name": "normalized-get",
-  "version": "0.0.5",
+  "version": "1.1.0",
   "description": "Easily follow relationships in normalizr data",
   "main": "./dist/index.js",
   "scripts": {
