@@ -28,6 +28,17 @@
     "lodash.get": "^4.4.2",
     "lodash.mergewith": "^4.6.0"
   },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/matthewconstantine/normalized-get"
+  },
+  "keywords": [
+    "normalizr",
+    "redux",
+    "redux-query",
+    "normalize",
+    "denormalize"
+  ],
   "quokka": {
     "babel": {
       "presets": [
