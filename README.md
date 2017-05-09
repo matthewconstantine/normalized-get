@@ -89,6 +89,9 @@ graphGet(
 )
 ```
 
+## Differences between graphGet and normalizedGet
+Both functions use the same underlying recursive getter. Both map over array results. `normalizedGet` only returns the "leaf" data, the last element of the path. `graphGet` returns both the leaf and the data leading to it. `normalizedGet` works only on a single path and has no merge strategy. `graphGet` merges paths into an identity map at the root.
+
 ## Usage
 
 First bind your schemas. This makes it easy to use the getters without passing schemas and data in each time. Probably best to do this somewhere central in your project and export the bound getter.
