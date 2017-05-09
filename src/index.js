@@ -92,7 +92,9 @@ const parsedNGet = (shouldMerge, schemas, entities, pathString) => {
     );
   }
   const results = nget(shouldMerge, schemas, entities, path);
-  return shouldMerge ? { [rootModelName]: { [rootModelId]: results } } : results;
+  return shouldMerge
+    ? { [rootModelName]: { [rootModelId]: results } }
+    : results;
 };
 
 /**
