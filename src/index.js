@@ -1,58 +1,156 @@
 import lodashGet from 'lodash.get';
-import memoize from 'lodash.memoize';
+import lodashMergeWith from 'lodash.mergewith';
 import stringToPath from 'lodash._stringtopath';
 
-const nget = (schemas, entities, path) => {
+/**
+ * Throw a useful error for a missing property and suggest alternatives.
+ * @param {*} modelData
+ * @param {*} modelName
+ * @param {*} propertyName
+ * @param {*} path
+ * @private
+ */
+function throwMissingPropertyError(modelData, modelName, propertyName, path) {
+  throw new Error(
+    `Could not find property '${propertyName}' on '${modelName}' for path [${path.join('.')}]. Available properties: [${Object.keys(modelData)}]`
+  );
+}
+
+/**
+ * Recursive function that uses the schemas to follow arbitrary paths through
+ * the entity graph. It can provide either the leaf nodes (the end of the pat) or
+ * the structure leading up to that, suitable for deep merging with other calls.
+ *
+ * @param {*} shouldMerge Provide parent data shape or just the leaf nodes. Future config object goes here, if needed.
+ * @param {*} schemas redux-query schemas or equivelent
+ * @param {*} entities normalizr entities
+ * @param {Array} path Path parts split into an Array
+ * @private
+ */
+const nget = (shouldMerge, schemas, entities, path) => {
   const [modelName, id, propertyName, ...remainingPath] = path;
   const modelData = entities[modelName] && entities[modelName][id];
-  if (!propertyName) { return modelData; } // No more properties to find. We're done.
-
-  if (typeof modelData === 'undefined') { return undefined; }  // cache miss. Ignore.
-
+  const propertyData = modelData && modelData[propertyName];
   const schema = schemas[modelName];
-  if (typeof schema === 'undefined') { 
-    throw new Error(`Could not find schema '${modelName}' for path [${path.join(', ')}]. Availalbe schemas: [${Object.keys(schemas)}]`); 
-  }
+  let results;
 
-  const propertyData = modelData[propertyName];  // may be an array or value
+  if (!propertyName) {
+    return modelData;
+  } // No more properties to find. We're done.
+
+  if (typeof modelData === 'undefined') {
+    return undefined;
+  } // cache miss. Ignore.
+
+  // requireKnownSchema(schemas, modelName, path);
   if (typeof propertyData === 'undefined') {
-    throw new Error(`Could not find property '${propertyName}' on '${modelName}' for path [${path.join(', ')}]. Available properties: [${Object.keys(modelData)}]`);
+    throwMissingPropertyError(modelData, modelName, propertyName, path);
   }
 
   const propertySchema = schema.schema[propertyName];
 
-  // it's a normal non-relational property, defer to lodashGet
-  if (!propertySchema) {  
-    return !propertySchema && lodashGet(modelData, [propertyName, ...remainingPath]);
-  }
-
-  // it's a hasMany relationship
-  if (Array.isArray(propertySchema)) {
+  if (!propertySchema) {
+    // it's a normal non-relational property, defer to lodashGet
+    results = lodashGet(modelData, [propertyName, ...remainingPath]);
+  } else if (Array.isArray(propertySchema)) {
+    // it's a hasMany relationship
     const relatedModelsName = propertySchema[0].key;
-    if (remainingPath.length) {
-      const [pathHead, ...pathTail] = remainingPath;
-      const relatedModelsIdByIndex = propertyData[pathHead];
-      return nget(schemas, entities, [relatedModelsName, relatedModelsIdByIndex, ...pathTail]);
-    }
+
     // return all the related records
-    return propertyData.map((relatedId) => {
-      return nget(schemas, entities, [relatedModelsName, relatedId]);
-    });
+    results = propertyData.map(relatedId =>
+      nget(shouldMerge, schemas, entities, [
+        relatedModelsName,
+        relatedId,
+        ...remainingPath
+      ])
+    );
+  } else {
+    // it's a belongsTo relationship
+    const relatedModelName = propertySchema.key;
+    results = nget(shouldMerge, schemas, entities, [
+      relatedModelName,
+      propertyData,
+      ...remainingPath
+    ]);
   }
 
-  // it's a belongsTo relationship
-  const relatedModelName = propertySchema.key;
-  return nget(schemas, entities, [relatedModelName, propertyData, ...remainingPath]);
+  return shouldMerge ? { ...modelData, [propertyName]: results } : results;
 };
 
-export const parsedNGet = (schemas, entities, pathString) => {
+/**
+ * Parses the pathString using lodash's stringToPath function.
+ *
+ * @private
+ */
+const parsedNGet = (shouldMerge, schemas, entities, pathString) => {
   const path = stringToPath(pathString);
-  const rootModelName = path[0];
+  const [rootModelName, rootModelId] = path;
   if (typeof entities[rootModelName] === 'undefined') {
     const knownSchemas = Object.keys(schemas);
-    throw new Error(`Could not find property '${rootModelName}' for path '${pathString}'. Known keys: [${knownSchemas.join(',')}].`); 
+    throw new Error(
+      `Could not find schema '${rootModelName}' for path '${pathString}'. Known schemas: [${knownSchemas.join(',')}].`
+    );
   }
-  return nget(schemas, entities, path);
+  const results = nget(shouldMerge, schemas, entities, path);
+  return shouldMerge ? { [rootModelName]: { [rootModelId]: results } } : results;
 };
 
-export const bindNormalizedGet = (schemas) => parsedNGet.bind(null, schemas);
+/**
+ * Deep merge customizer that prevents strings from overriding objects. This
+ * makes it possible for us to deepmerge multiple paths without worrying about
+ * the order in which those were fetched. It's based on the assumption that
+ * a string is a key and an object is a previously denormalized data that should
+ * be preserved.
+ *
+ * @private
+ */
+const preferObjectsCustomizer = (a, b) => {
+  const typeA = typeof [].concat(a)[0];
+  const typeB = typeof [].concat(b)[0];
+  if (typeA === 'object' && typeB === 'object') {
+    return lodashMergeWith(a, b, preferObjectsCustomizer);
+  }
+  const shouldPreserveObject = typeA === 'object' && typeB === 'string';
+  return shouldPreserveObject ? a : b;
+};
+
+/**
+ * Maps over multiple paths and deep merges them using a special customizer
+ * that preserves denormalized data.
+ *
+ * @private
+ */
+export const parsedNGetMulti = (
+  shouldMerge,
+  schemas,
+  entities,
+  ...pathStrings
+) => {
+  const results = pathStrings.map(pathString =>
+    parsedNGet(true, schemas, entities, pathString)
+  );
+
+  return lodashMergeWith({}, ...results, preferObjectsCustomizer);
+};
+
+/**
+ * Produces a getter that is prebound to redux-query schemas and normalizr
+ * entities. The bound function accepts a single path string and returns the
+ * leaf ndoe of the graph. It will follow Array types.
+ *
+ * @param {Object} schemas
+ * @param {Object} entities
+ */
+export const bindNormalizedGet = (schemas, entities) =>
+  parsedNGet.bind(null, false, schemas, entities);
+
+/**
+ * Produces a getter that is prebound to redux-query schemas and normalizr
+ * entities. The bound function accepts multiple path strings and returns
+ * the combined result of all of them.
+ *
+ * @param {*} schemas
+ * @param {*} entities
+ */
+export const bindGraphGet = (schemas, entities) =>
+  parsedNGetMulti.bind(null, true, schemas, entities);

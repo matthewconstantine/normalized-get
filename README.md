@@ -1,6 +1,6 @@
 # Normalized Get
 
-A `get` function that traverses normalizr relationships.
+Helper functions for traversing [normalizr](https://github.com/paularmstrong/normalizr) relationships.
 
 ## Who is this for?
 
@@ -8,38 +8,97 @@ Anyone that uses [normalizr](https://github.com/paularmstrong/normalizr), or nor
 
 ## What does it do?
 
-Let's you access normalized data as though it was denormalized. 
+1. `NormalizedGet` lets you access normalized data using a path as though it was denormalized. 
+2. `GraphGet` lets you denormalize multiple paths at once, perfect for using in components.
+
+### NormalizedGet
 
 Say you have a schema like this:
 ```js
   const users = new schema.Entity('users');
-  const articles = new schema.Entity('articles', {
-    author: users
+  const comments = new schema.Entity('comments', {
+    user: users
   });
-  const schemas { articles, users };
+  const articles = new schema.Entity('articles', {
+    author: users,
+    comments: [comments]
+  });
+  return { comments, articles, users };
 ```
 
-Before, to access a related property, you'd have to do this:
+Just setup `bindNoramlizedGet` like so:
 ```js
-const authorId = data.articles[123].author;
-const author = data.users[authorId];
+const normalizedGet = bindNormalizedGet(schemas, data); 
 ```
 
-The more relationships your data has have the more complex this gets. And you have to remember which property maps to which model. In this case, `articles[123].author` maps to `users`.
-
-With normalized get you can access a realtionship like:
+Now you can access deep relationships with a single line of code:
 
 ```js
-const nget = bindNormalizedGet(schemas);
-const author = nget(data, 'articles[123].author');
+// With normalizedGet
+const commenters = normalizedGet('articles[123].comments.user');
 ```
+
+It even follows Array entities. So the above example will map over the comments and return the authors.
+
+For comparison, here's how you'd do it without `normalizedGet`:
+```js
+// Without normlaizedGet:
+const commenters = Object.keys(data.comments)
+  .map(key => {
+    const userId = data.comments[key].user
+    return data.users[userId];
+  });
+```
+
+The more relationships your data has have the more complex this manual fetching gets. And you have to remember which property maps to which model.
+
+### graphGet
+
+`normalizedGet` is nice for getting a specific piece of data from your entity graph. What if you need more data? That's where `graphGet` comes in handy. It returns a deep structure containing the data you specify.
+
+First we bind `graphGet` using the similar config method as before:
+```js
+const graphGet = bindGraphGet(schemas, data); 
+```
+
+Now we can retrieve the commenters as before, but also the article and comments too.
+```js
+const models = graphGet('articles[123].comments.user')
+```
+
+This will output nested data ready for use in a view:
+```js
+{
+  articles: {
+    123: {
+      title: '…',
+      comments: [{
+        comment: 'Looks good to me', 
+        user: { name: 'Jane' } 
+      }, {…}, {…}]
+    }
+  }
+}
+```
+
+`GraphGet` can accept multiple paths and merge them together.
+```js
+graphGet(
+  `articles[${articleId}].comments.user`,
+  `users[${currentUserId}]`
+)
+```
+
+## Differences between graphGet and normalizedGet
+Both functions use the same underlying recursive getter. Both map over array results. `normalizedGet` only returns the "leaf" data, the last element of the path. `graphGet` returns both the leaf and the data leading to it. `normalizedGet` works only on a single path and has no merge strategy. `graphGet` merges paths into an identity map at the root.
 
 ## Usage
 
-First bind your schemas. This makes it easy to use Normalized Get without passing schemas in each time. Probably best to do this somewhere central in your project and export the bound getter.
+First bind your schemas. This makes it easy to use the getters without passing schemas and data in each time. Probably best to do this somewhere central in your project and export the bound getter.
 
 ```js
-export const nget = bindNormalizedGet(schemas);
+export const normalizedGet = bindNormalizedGet(schemas, data);
+export const graphGet = bindGraphGet(schemas, data);
 ```
 
-Now you can have an `nget` function that takes data and a path.
+Now you have `normalizedGet` and `graphGet` functions ready for easy data denormalization.
